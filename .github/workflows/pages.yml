@@ -1,0 +1,50 @@
+name: Publish Rewire Bio
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the website source
+        uses: actions/checkout@v7
+        with:
+          repository: nathnwe/hack-anthropic-modal-2026
+          ref: main
+          persist-credentials: false
+      - name: Record the source revision
+        run: git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+      - name: Check, build and upload
+        uses: withastro/action@v6
+        env:
+          REWIRE_SITE_URL: https://leandre-tappenden.github.io
+          REWIRE_BASE_PATH: /rewire-bio-site
+        with:
+          path: site
+          node-version: "24"
+          build-cmd: npm run check && npm test && npm run build
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v5
